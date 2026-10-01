@@ -1,0 +1,269 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Auction Market Intel | Automated Chart Analysis</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+  <!-- Markdown parser -->
+  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+</head>
+<body>
+  <div class="app-layout">
+    <!-- Navigation / Top Header -->
+    <header class="app-header">
+      <div class="header-left">
+        <div class="logo">
+          <div class="logo-icon">
+            <span class="pulse-ring"></span>
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M3 3v18h18" />
+              <path d="M18 17V9" />
+              <path d="M13 17V5" />
+              <path d="M8 17v-3" />
+            </svg>
+          </div>
+          <div class="logo-text">
+            <span class="brand-title">AUCTION MARKET INTEL</span>
+            <span class="brand-subtitle">Gemini 2.5 Multimodal • Volume Profile & AMT</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="header-center">
+        <div class="session-badge-container">
+          <span class="status-dot"></span>
+          <span class="session-label">Session:</span>
+          <span id="currentSessionDisplay" class="session-name">Calculating...</span>
+        </div>
+        <div class="utc-clock">
+          <span class="clock-label">UTC:</span>
+          <span id="utcClock">--:--:--</span>
+        </div>
+        <div class="countdown-badge">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="12" cy="12" r="10"/>
+            <polyline points="12 6 12 12 16 14"/>
+          </svg>
+          <span id="countdownLabel">Next Session in:</span>
+          <span id="nextRunCountdown" class="countdown-timer">--h --m --s</span>
+        </div>
+      </div>
+
+      <div class="header-right">
+        <button id="btnTriggerManual" class="btn-primary">
+          <span class="btn-icon">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/>
+            </svg>
+          </span>
+          <span class="btn-text">Run Analysis Now</span>
+        </button>
+      </div>
+    </header>
+
+    <!-- Main Container -->
+    <main class="main-content">
+      <!-- Status Notice Bar (if API key needed or running) -->
+      <div id="noticeBanner" class="notice-banner hidden"></div>
+
+      <!-- Metric Cards Row -->
+      <section class="metrics-grid">
+        <div class="metric-card bias-card" id="cardBias">
+          <div class="metric-header">
+            <span class="metric-title">DIRECTIONAL BIAS</span>
+            <span class="metric-tag">Probabilistic</span>
+          </div>
+          <div class="metric-value-container">
+            <span id="metricBiasValue" class="badge-bias bias-neutral">LOADING</span>
+          </div>
+          <div class="metric-footer" id="metricBiasSub">Evaluating volume migration...</div>
+        </div>
+
+        <div class="metric-card level-poc">
+          <div class="metric-header">
+            <span class="metric-title">POINT OF CONTROL (POC)</span>
+            <span class="level-indicator poc-dot">● Highest Vol</span>
+          </div>
+          <div class="metric-value-container">
+            <span class="currency-symbol">$</span>
+            <span id="metricPoc" class="metric-price">--</span>
+          </div>
+          <div class="metric-footer">Fair Price High Volume Anchor</div>
+        </div>
+
+        <div class="metric-card level-vah">
+          <div class="metric-header">
+            <span class="metric-title">VALUE AREA HIGH (VAH)</span>
+            <span class="level-indicator vah-tag">Upper 70%</span>
+          </div>
+          <div class="metric-value-container">
+            <span class="currency-symbol">$</span>
+            <span id="metricVah" class="metric-price">--</span>
+          </div>
+          <div class="metric-footer">Premium Liquidity Boundary</div>
+        </div>
+
+        <div class="metric-card level-val">
+          <div class="metric-header">
+            <span class="metric-title">VALUE AREA LOW (VAL)</span>
+            <span class="level-indicator val-tag">Lower 70%</span>
+          </div>
+          <div class="metric-value-container">
+            <span class="currency-symbol">$</span>
+            <span id="metricVal" class="metric-price">--</span>
+          </div>
+          <div class="metric-footer">Discount Liquidity Boundary</div>
+        </div>
+
+        <div class="metric-card level-invalidation">
+          <div class="metric-header">
+            <span class="metric-title">INVALIDATION / RISK</span>
+            <span class="level-indicator inv-tag">Stop Trigger</span>
+          </div>
+          <div class="metric-value-container">
+            <span class="currency-symbol">$</span>
+            <span id="metricInvalidation" class="metric-price danger-text">--</span>
+          </div>
+          <div class="metric-footer">Hard Exit / Thesis Fail Level</div>
+        </div>
+      </section>
+
+      <!-- Split View Panel -->
+      <section class="split-view">
+        <!-- Left: Chart Snapshot Viewport -->
+        <div class="panel chart-panel">
+          <div class="panel-header">
+            <div class="panel-title-group">
+              <h2 class="panel-title">TradingView Chart Snapshot</h2>
+              <span id="snapshotAssetTag" class="tag asset-tag">BTCUSDT</span>
+              <span id="snapshotSessionTag" class="tag session-tag">Session</span>
+            </div>
+            <div class="panel-actions">
+              <span id="snapshotTimeTag" class="timestamp-text">--</span>
+              <button id="btnOpenLightbox" class="btn-icon-only" title="Full Screen Lightbox">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7"/>
+                </svg>
+              </button>
+            </div>
+          </div>
+
+          <div class="chart-viewport" id="chartViewport">
+            <img id="chartImage" src="" alt="TradingView Chart Snapshot" class="chart-image" />
+            <div class="chart-overlay-legend">
+              <span class="legend-item"><span class="legend-box vp-blue"></span> Volume Profile</span>
+              <span class="legend-item"><span class="legend-line poc-line"></span> POC Node</span>
+              <span class="legend-item"><span class="legend-line vah-line"></span> VAH / VAL Value Area</span>
+              <span class="legend-item"><span class="legend-circle delta-bubble"></span> Absorption Bubbles</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Right: Gemini Multimodal Analysis Panel -->
+        <div class="panel analysis-panel">
+          <div class="panel-header">
+            <div class="panel-title-group">
+              <h2 class="panel-title">Multimodal Gemini 2.5 Analysis</h2>
+              <span class="tag ai-tag">Auction Market Theory</span>
+            </div>
+            <div class="panel-actions">
+              <span class="live-dot"></span>
+              <span class="status-subtle">Verified Structure</span>
+            </div>
+          </div>
+
+          <div class="analysis-body">
+            <!-- Price Action Summary -->
+            <div class="section-box">
+              <h3 class="section-title">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/>
+                </svg>
+                Structure & Price Action Summary
+              </h3>
+              <p id="analysisPriceAction" class="analysis-text">Loading analysis...</p>
+            </div>
+
+            <!-- Primary Scenario & Execution Plan -->
+            <div class="section-box scenario-box">
+              <h3 class="section-title">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <circle cx="12" cy="12" r="10"/>
+                  <polygon points="12 8 8 12 12 16 12 8"/>
+                </svg>
+                Primary Scenario & Trade Plan
+              </h3>
+              <div class="scenario-details">
+                <div class="scenario-row">
+                  <span class="scenario-label">Direction:</span>
+                  <span id="scenarioDirection" class="scenario-value highlight-cyan">--</span>
+                </div>
+                <div class="scenario-row">
+                  <span class="scenario-label">Trigger Condition:</span>
+                  <span id="scenarioTrigger" class="scenario-value">--</span>
+                </div>
+                <div class="scenario-row">
+                  <span class="scenario-label">Profit Targets:</span>
+                  <div id="scenarioTargetsList" class="targets-container">--</div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Risk Management / Invalidation -->
+            <div class="section-box risk-box">
+              <div class="risk-header">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
+                  <line x1="12" y1="9" x2="12" y2="13"/>
+                  <line x1="12" y1="17" x2="12.01" y2="17"/>
+                </svg>
+                <span>Invalidation Boundary: <strong id="invalidationPrice">$0</strong></span>
+              </div>
+              <p class="risk-sub">Auction acceptance beyond this level fully invalidates the current thesis. Position sizing must align with this stop-out distance.</p>
+            </div>
+
+            <!-- Full Markdown Analysis -->
+            <div class="section-box markdown-box">
+              <h3 class="section-title">Institutional Breakdown & Order Flow</h3>
+              <div id="fullMarkdownContent" class="markdown-rendered">
+                <!-- Rendered Markdown will appear here -->
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- History / Archive Timeline -->
+      <section class="archive-section">
+        <div class="archive-header">
+          <div class="archive-title-group">
+            <h2 class="archive-title">Session Archive & Timeline</h2>
+            <span class="subtle-count" id="archiveCount">(0 records)</span>
+          </div>
+          <div class="archive-legend">
+            <span>Scheduled: 07:00 UTC (London) • 12:30 UTC (NY) • 17:00 UTC (London Fix)</span>
+          </div>
+        </div>
+        <div class="archive-grid" id="archiveGrid">
+          <!-- Archive cards injected dynamically -->
+        </div>
+      </section>
+    </main>
+
+    <!-- Lightbox Modal -->
+    <div id="lightboxModal" class="lightbox-modal hidden">
+      <div class="lightbox-backdrop" id="lightboxBackdrop"></div>
+      <div class="lightbox-content">
+        <button id="btnCloseLightbox" class="btn-close-lightbox">✕</button>
+        <img id="lightboxImage" src="" alt="Full Chart Snapshot" class="lightbox-img" />
+      </div>
+    </div>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>
