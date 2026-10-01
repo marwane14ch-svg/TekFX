@@ -232,6 +232,24 @@ body {
   text-decoration: underline;
 }
 
+.email-badge-container {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  background-color: var(--bg-card);
+  padding: 6px 14px;
+  border-radius: 20px;
+  border: 1px solid var(--border-color);
+  font-size: 11.5px;
+  color: #94a3b8;
+  font-family: var(--font-mono);
+}
+
+.email-badge-container svg {
+  color: #38bdf8;
+  flex-shrink: 0;
+}
+
 /* Primary Button */
 .btn-primary {
   background: linear-gradient(135deg, #2563eb, #1d4ed8);

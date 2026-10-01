@@ -103,6 +103,18 @@ async function fetchStatus() {
         if (aiPanelTitle) aiPanelTitle.textContent = `Multimodal ${formatted} Analysis`;
       }
 
+      if (json.data.emailRecipient) {
+        state.emailRecipient = json.data.emailRecipient;
+        const emailRecipientText = document.getElementById('emailRecipientText');
+        const emailBadgeContainer = document.getElementById('emailBadgeContainer');
+        if (emailRecipientText) emailRecipientText.textContent = json.data.emailRecipient;
+        if (emailBadgeContainer) {
+          emailBadgeContainer.title = json.data.emailConfigured 
+            ? `Alerts active: sending reports to ${json.data.emailRecipient}` 
+            : `Configured to email ${json.data.emailRecipient} (Set SMTP_USER & SMTP_PASS in Railway Variables to activate)`;
+        }
+      }
+
       if (!json.data.geminiConfigured) {
         noticeBanner.classList.remove('hidden');
         noticeBanner.innerHTML = `<strong>Notice:</strong> <code>GEMINI_API_KEY</code> is not configured in <code>.env</code>. Running in high-fidelity Auction Market Theory simulation mode. Add your key to activate live Gemini multimodal vision.`;

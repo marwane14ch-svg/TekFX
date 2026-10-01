@@ -2,6 +2,7 @@ const cron = require('node-cron');
 const { captureTradingViewChart } = require('./capture_chart');
 const { analyzeChartWithGemini } = require('./gemini_analyzer');
 const { saveAnalysis } = require('./db');
+const { sendAnalysisEmail } = require('./email_notifier');
 
 // Defined market sessions in UTC
 const SCHEDULED_SESSIONS = [
@@ -108,6 +109,15 @@ async function runAnalysisPipeline(options = {}) {
       session_name: sessionName,
       image_path: snapshot.imagePath
     });
+
+    // Step 4: Dispatch email notification with embedded snapshot
+    console.log('[Pipeline] Step 4/4: Dispatching email notification to recipient...');
+    try {
+      const emailResult = await sendAnalysisEmail(savedRecord, snapshot.fullPath);
+      savedRecord.email_sent = emailResult.sent;
+    } catch (emailErr) {
+      console.warn('[Pipeline] Email notification non-fatal error:', emailErr.message);
+    }
 
     console.log(`[Pipeline] Completed successfully! Saved analysis #${savedRecord.id}`);
     console.log(`======================================================\n`);

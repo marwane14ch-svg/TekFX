@@ -25,6 +25,7 @@
     "dotenv": "^16.4.7",
     "express": "^4.21.2",
     "node-cron": "^3.0.3",
+    "nodemailer": "^10.0.13",
     "playwright": "^1.50.1"
   }
 }
