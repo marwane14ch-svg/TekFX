@@ -32,7 +32,8 @@ app.get('/api/status', (req, res) => {
       data: {
         ...status,
         geminiConfigured: !!(process.env.GEMINI_API_KEY && process.env.GEMINI_API_KEY !== 'your_gemini_api_key_here'),
-        targetUrl: process.env.TRADINGVIEW_CHART_URL || 'https://www.tradingview.com/chart/?symbol=BINANCE:BTCUSDT'
+        targetUrl: process.env.TRADINGVIEW_CHART_URL || 'https://www.tradingview.com/chart/?symbol=BINANCE:BTCUSDT',
+        model: process.env.GEMINI_MODEL || 'gemini-3.8-flash'
       }
     });
   } catch (err) {

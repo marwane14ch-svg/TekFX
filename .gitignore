@@ -1,0 +1,12 @@
+# Dependencies
+node_modules/
+
+# Local database
+analysis.db
+
+# Secrets & environment
+.env
+
+# Logs & temp
+*.log
+.tmp/

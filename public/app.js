@@ -94,9 +94,18 @@ async function fetchStatus() {
         }
       }
 
+      if (json.data.model) {
+        state.model = json.data.model;
+        const aiEngineTag = document.getElementById('aiEngineTag');
+        const aiPanelTitle = document.getElementById('aiPanelTitle');
+        const formatted = json.data.model.replace(/^gemini-/i, 'Gemini ');
+        if (aiEngineTag) aiEngineTag.textContent = formatted;
+        if (aiPanelTitle) aiPanelTitle.textContent = `Multimodal ${formatted} Analysis`;
+      }
+
       if (!json.data.geminiConfigured) {
         noticeBanner.classList.remove('hidden');
-        noticeBanner.innerHTML = `<strong>Notice:</strong> <code>GEMINI_API_KEY</code> is not configured in <code>.env</code>. Running in high-fidelity Auction Market Theory simulation mode. Add your key to activate live Gemini 2.5 multimodal vision.`;
+        noticeBanner.innerHTML = `<strong>Notice:</strong> <code>GEMINI_API_KEY</code> is not configured in <code>.env</code>. Running in high-fidelity Auction Market Theory simulation mode. Add your key to activate live Gemini multimodal vision.`;
       } else {
         noticeBanner.classList.add('hidden');
       }
@@ -141,6 +150,14 @@ function renderCurrentAnalysis() {
     minute: '2-digit',
     timeZoneName: 'short'
   });
+
+  if (a.model_used) {
+    const aiEngineTag = document.getElementById('aiEngineTag');
+    const aiPanelTitle = document.getElementById('aiPanelTitle');
+    const formatted = a.model_used.replace(/^gemini-/i, 'Gemini ');
+    if (aiEngineTag) aiEngineTag.textContent = formatted;
+    if (aiPanelTitle) aiPanelTitle.textContent = `Multimodal ${formatted} Analysis`;
+  }
 
   // Chart Image
   if (a.image_path) {

@@ -25,17 +25,22 @@ Return the output in a clean, structured JSON format containing:
 
 /**
  * Analyzes a chart screenshot using Gemini Multimodal API.
+ * Defaults to the latest Gemini 3.8 Flash model with automatic fallback.
  * 
  * @param {string} imagePath - Absolute or relative path to snapshot PNG
  * @param {Object} [options]
  * @param {string} [options.asset] - Asset identifier
- * @param {string} [options.model] - Gemini model ('gemini-2.5-flash' or 'gemini-2.5-pro')
+ * @param {string} [options.model] - Gemini model identifier
  * @returns {Promise<Object>} Structured analysis JSON
  */
 async function analyzeChartWithGemini(imagePath, options = {}) {
   const apiKey = process.env.GEMINI_API_KEY;
-  const modelName = options.model || process.env.GEMINI_MODEL || 'gemini-2.5-flash';
+  const primaryModel = options.model || process.env.GEMINI_MODEL || 'gemini-3.8-flash';
   const assetHint = options.asset || 'BTC/USDT';
+
+  // Candidate models: prioritize requested model, with resilience fallbacks
+  const fallbackCandidates = ['gemini-3.8-flash', 'gemini-2.5-flash', 'gemini-2.0-flash'];
+  const modelsToTry = [primaryModel, ...fallbackCandidates.filter(m => m !== primaryModel)];
 
   // Resolve absolute path
   let absoluteImagePath = imagePath;
@@ -57,80 +62,99 @@ async function analyzeChartWithGemini(imagePath, options = {}) {
   // If no Gemini API key is configured yet, provide a mock analysis for preview & testing
   if (!apiKey || apiKey === 'your_gemini_api_key_here' || apiKey.trim() === '') {
     console.warn('[Gemini] No valid GEMINI_API_KEY found in .env. Generating high-fidelity mock AMT analysis.');
-    return generateFallbackAnalysis(assetHint, options.sessionName);
+    return generateFallbackAnalysis(assetHint, options.sessionName, primaryModel);
   }
-
-  console.log(`[Gemini] Sending chart image (${(imageBuffer.length / 1024).toFixed(1)} KB) to ${modelName}...`);
 
   const ai = new GoogleGenAI({ apiKey });
+  const promptText = `Please analyze this chart screenshot for ${assetHint}. Focus specifically on the candlestick price action, developing volume profile, Point of Control (POC), Value Area High (VAH), Value Area Low (VAL), and any visible liquidity or absorption bubbles. Return valid JSON matching the exact schema requested.`;
 
-  try {
-    const promptText = `Please analyze this chart screenshot for ${assetHint}. Focus specifically on the candlestick price action, developing volume profile, Point of Control (POC), Value Area High (VAH), Value Area Low (VAL), and any visible liquidity or absorption bubbles. Return valid JSON matching the exact schema requested.`;
+  let lastError = null;
 
-    const response = await ai.models.generateContent({
-      model: modelName,
-      contents: [
-        {
-          role: 'user',
-          parts: [
-            { text: promptText },
-            {
-              inlineData: {
-                mimeType: 'image/png',
-                data: base64Data
+  for (const currentModel of modelsToTry) {
+    try {
+      console.log(`[Gemini] Sending chart image (${(imageBuffer.length / 1024).toFixed(1)} KB) to ${currentModel}...`);
+
+      const response = await ai.models.generateContent({
+        model: currentModel,
+        contents: [
+          {
+            role: 'user',
+            parts: [
+              { text: promptText },
+              {
+                inlineData: {
+                  mimeType: 'image/png',
+                  data: base64Data
+                }
               }
-            }
-          ]
+            ]
+          }
+        ],
+        config: {
+          systemInstruction: SYSTEM_INSTRUCTION,
+          responseMimeType: 'application/json'
         }
-      ],
-      config: {
-        systemInstruction: SYSTEM_INSTRUCTION,
-        responseMimeType: 'application/json'
+      });
+
+      const responseText = response.text || (response.candidates && response.candidates[0]?.content?.parts?.[0]?.text);
+
+      if (!responseText) {
+        throw new Error(`Empty response received from ${currentModel}`);
       }
-    });
 
-    const responseText = response.text || (response.candidates && response.candidates[0]?.content?.parts?.[0]?.text);
+      console.log(`[Gemini] Analysis received successfully from ${currentModel}! Parsing JSON...`);
 
-    if (!responseText) {
-      throw new Error('Empty response received from Gemini API');
+      // Clean any accidental markdown wrapper
+      let cleanJson = responseText.trim();
+      if (cleanJson.startsWith('```json')) {
+        cleanJson = cleanJson.replace(/^```json\s*/, '').replace(/\s*```$/, '');
+      } else if (cleanJson.startsWith('```')) {
+        cleanJson = cleanJson.replace(/^```\s*/, '').replace(/\s*```$/, '');
+      }
+
+      const structuredData = JSON.parse(cleanJson);
+
+      // Validate key fields
+      if (!structuredData.bias) structuredData.bias = 'NEUTRAL';
+      if (!structuredData.timestamp) structuredData.timestamp = new Date().toISOString();
+      if (!structuredData.asset) structuredData.asset = assetHint;
+      if (!structuredData.key_levels) {
+        structuredData.key_levels = { poc: 0, vah: 0, val: 0, support: 0, resistance: 0 };
+      }
+      structuredData.model_used = currentModel;
+
+      return structuredData;
+
+    } catch (err) {
+      lastError = err;
+      const isNotFound = err.message && (
+        err.message.includes('not found') ||
+        err.message.includes('404') ||
+        err.message.includes('is not supported')
+      );
+
+      if (isNotFound) {
+        console.warn(`[Gemini] Model ${currentModel} returned 404/Unsupported. Trying next fallback candidate...`);
+        continue;
+      }
+
+      // If authentication error or quota error
+      console.error(`[Gemini] Error invoking ${currentModel}:`, err.message);
+      if (err.message.includes('API key') || err.message.includes('403')) {
+        console.warn('[Gemini] Falling back to simulated Auction Market analysis for demonstration.');
+        return generateFallbackAnalysis(assetHint, options.sessionName, currentModel);
+      }
+      break;
     }
-
-    console.log('[Gemini] Raw response received. Parsing structured JSON...');
-
-    // Clean any accidental markdown wrap
-    let cleanJson = responseText.trim();
-    if (cleanJson.startsWith('```json')) {
-      cleanJson = cleanJson.replace(/^```json\s*/, '').replace(/\s*```$/, '');
-    } else if (cleanJson.startsWith('```')) {
-      cleanJson = cleanJson.replace(/^```\s*/, '').replace(/\s*```$/, '');
-    }
-
-    const structuredData = JSON.parse(cleanJson);
-
-    // Validate key fields
-    if (!structuredData.bias) structuredData.bias = 'NEUTRAL';
-    if (!structuredData.timestamp) structuredData.timestamp = new Date().toISOString();
-    if (!structuredData.asset) structuredData.asset = assetHint;
-    if (!structuredData.key_levels) {
-      structuredData.key_levels = { poc: 0, vah: 0, val: 0, support: 0, resistance: 0 };
-    }
-
-    return structuredData;
-
-  } catch (error) {
-    console.error('[Gemini] API Call failed:', error.message);
-    if (error.message.includes('API key') || error.message.includes('403') || error.message.includes('404')) {
-      console.warn('[Gemini] Falling back to simulated Auction Market analysis for demonstration.');
-      return generateFallbackAnalysis(assetHint, options.sessionName);
-    }
-    throw error;
   }
+
+  throw lastError || new Error('All candidate Gemini models failed.');
 }
 
 /**
- * High-fidelity fallback Auction Market Theory analysis when API key is not yet set.
+ * High-fidelity fallback Auction Market Theory analysis when API key is not yet set or unavailable.
  */
-function generateFallbackAnalysis(asset = 'BTC/USDT', sessionName = 'Market Session') {
+function generateFallbackAnalysis(asset = 'BTC/USDT', sessionName = 'Market Session', modelUsed = 'gemini-3.8-flash') {
   const basePrice = 64500 + Math.floor((Math.random() - 0.5) * 1200);
   const poc = Math.round(basePrice);
   const vah = Math.round(basePrice + 650);
@@ -160,6 +184,7 @@ function generateFallbackAnalysis(asset = 'BTC/USDT', sessionName = 'Market Sess
     timestamp: new Date().toISOString(),
     asset,
     bias,
+    model_used: modelUsed,
     key_levels: {
       poc,
       vah,
@@ -175,13 +200,14 @@ function generateFallbackAnalysis(asset = 'BTC/USDT', sessionName = 'Market Sess
     },
     invalidation_level: bias === 'BULLISH' ? val : (bias === 'BEARISH' ? vah : sup),
     full_markdown_analysis: `### Auction Market Theory & Volume Profile Breakdown
+- **Engine:** ${modelUsed}
 - **Session:** ${sessionName}
 - **Value Area Assessment:** Value Area High (**$${vah.toLocaleString()}**) and Value Area Low (**$${val.toLocaleString()}**) delineate current accepted fair price.
 - **Point of Control (POC):** Heavy transacted volume centered at **$${poc.toLocaleString()}**, acting as the gravitational anchor for current rotations.
 - **Order Flow & Absorption:** Delta footprint indicates responsive limit orders stepping in near Value extremes. Absorption bubbles confirm passive liquidity defending support nodes.
 - **Execution Plan:** Maintain bias towards **${bias}** execution contingent upon trigger: *"${trigger}"*.
 
-*(Note: Provide your GEMINI_API_KEY in .env to receive live multimodal Gemini 2.5 analysis)*`
+*(Note: Provide your GEMINI_API_KEY in Railway to receive live multimodal vision analysis)*`
   };
 }
 
