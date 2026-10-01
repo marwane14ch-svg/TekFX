@@ -70,6 +70,30 @@ async function fetchStatus() {
       currentSessionEl.textContent = json.data.currentSession || 'Global Session';
       state.nextRunTime = json.data.nextRunTime;
 
+      if (json.data.targetUrl) {
+        state.targetUrl = json.data.targetUrl;
+        const chartLayoutLink = document.getElementById('chartLayoutLink');
+        const headerChartLink = document.getElementById('headerChartLink');
+        const headerChartText = document.getElementById('headerChartText');
+        const chartUrlDisplay = document.getElementById('chartUrlDisplay');
+
+        if (chartLayoutLink) {
+          chartLayoutLink.href = json.data.targetUrl;
+          chartLayoutLink.title = `Open live TradingView chart: ${json.data.targetUrl}`;
+        }
+        if (headerChartLink) {
+          headerChartLink.href = json.data.targetUrl;
+        }
+        const cleanUrl = json.data.targetUrl.replace(/^https?:\/\/(www\.)?tradingview\.com\//i, '');
+        if (headerChartText) {
+          headerChartText.textContent = cleanUrl ? `TV: ${cleanUrl}` : 'Live Chart';
+        }
+        if (chartUrlDisplay) {
+          chartUrlDisplay.href = json.data.targetUrl;
+          chartUrlDisplay.textContent = json.data.targetUrl;
+        }
+      }
+
       if (!json.data.geminiConfigured) {
         noticeBanner.classList.remove('hidden');
         noticeBanner.innerHTML = `<strong>Notice:</strong> <code>GEMINI_API_KEY</code> is not configured in <code>.env</code>. Running in high-fidelity Auction Market Theory simulation mode. Add your key to activate live Gemini 2.5 multimodal vision.`;

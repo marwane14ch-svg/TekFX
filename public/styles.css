@@ -191,6 +191,47 @@ body {
   color: #60a5fa;
 }
 
+.layout-badge-container {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background-color: var(--bg-card);
+  padding: 6px 14px;
+  border-radius: 20px;
+  border: 1px solid var(--border-color);
+  font-size: 12px;
+}
+
+.tv-badge {
+  background: #2563eb;
+  color: #fff;
+  font-size: 10px;
+  font-weight: 800;
+  padding: 2px 6px;
+  border-radius: 4px;
+  letter-spacing: 0.05em;
+}
+
+.header-chart-url {
+  color: #93c5fd;
+  text-decoration: none;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-family: var(--font-mono);
+  font-size: 11.5px;
+  transition: color 0.2s;
+  max-width: 220px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.header-chart-url:hover {
+  color: #ffffff;
+  text-decoration: underline;
+}
+
 /* Primary Button */
 .btn-primary {
   background: linear-gradient(135deg, #2563eb, #1d4ed8);
@@ -446,6 +487,71 @@ body {
   font-size: 11px;
   color: var(--text-dim);
   font-family: var(--font-mono);
+}
+
+.btn-chart-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: rgba(37, 99, 235, 0.15);
+  border: 1px solid rgba(59, 130, 246, 0.4);
+  color: #60a5fa;
+  padding: 5px 12px;
+  border-radius: 6px;
+  font-size: 11.5px;
+  font-weight: 600;
+  text-decoration: none;
+  transition: all 0.2s ease;
+}
+
+.btn-chart-link:hover {
+  background: rgba(37, 99, 235, 0.3);
+  border-color: #60a5fa;
+  color: #ffffff;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(37, 99, 235, 0.25);
+}
+
+.chart-overlay-layout {
+  position: absolute;
+  top: 12px;
+  left: 12px;
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: rgba(11, 14, 20, 0.88);
+  backdrop-filter: blur(8px);
+  padding: 5px 12px;
+  border-radius: 6px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  font-size: 11px;
+}
+
+.chart-overlay-layout .layout-icon {
+  color: #60a5fa;
+  display: flex;
+  align-items: center;
+}
+
+.chart-overlay-layout .layout-label {
+  color: var(--text-dim);
+  font-weight: 600;
+}
+
+.chart-overlay-layout .layout-url-link {
+  color: #93c5fd;
+  text-decoration: none;
+  font-family: var(--font-mono);
+  max-width: 320px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.chart-overlay-layout .layout-url-link:hover {
+  color: #ffffff;
+  text-decoration: underline;
 }
 
 .btn-icon-only {

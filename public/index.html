@@ -51,6 +51,17 @@
           <span id="countdownLabel">Next Session in:</span>
           <span id="nextRunCountdown" class="countdown-timer">--h --m --s</span>
         </div>
+        <div class="layout-badge-container">
+          <span class="tv-badge">TV</span>
+          <a id="headerChartLink" href="#" target="_blank" rel="noopener noreferrer" class="header-chart-url" title="Open TradingView Chart Layout">
+            <span id="headerChartText">Live Chart</span>
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/>
+              <polyline points="15 3 21 3 21 9"/>
+              <line x1="10" y1="14" x2="21" y2="3"/>
+            </svg>
+          </a>
+        </div>
       </div>
 
       <div class="header-right">
@@ -143,6 +154,14 @@
               <span id="snapshotSessionTag" class="tag session-tag">Session</span>
             </div>
             <div class="panel-actions">
+              <a id="chartLayoutLink" href="#" target="_blank" rel="noopener noreferrer" class="btn-chart-link" title="Open live TradingView chart layout in new tab">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path>
+                  <polyline points="15 3 21 3 21 9"></polyline>
+                  <line x1="10" y1="14" x2="21" y2="3"></line>
+                </svg>
+                <span>Live Chart ↗</span>
+              </a>
               <span id="snapshotTimeTag" class="timestamp-text">--</span>
               <button id="btnOpenLightbox" class="btn-icon-only" title="Full Screen Lightbox">
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -153,6 +172,17 @@
           </div>
 
           <div class="chart-viewport" id="chartViewport">
+            <div class="chart-overlay-layout">
+              <span class="layout-icon">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <circle cx="12" cy="12" r="10"></circle>
+                  <line x1="2" y1="12" x2="22" y2="12"></line>
+                  <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"></path>
+                </svg>
+              </span>
+              <span class="layout-label">Active Layout:</span>
+              <a id="chartUrlDisplay" href="#" target="_blank" rel="noopener noreferrer" class="layout-url-link">Loading...</a>
+            </div>
             <img id="chartImage" src="" alt="TradingView Chart Snapshot" class="chart-image" />
             <div class="chart-overlay-legend">
               <span class="legend-item"><span class="legend-box vp-blue"></span> Volume Profile</span>

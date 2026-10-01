@@ -1,0 +1,6 @@
+# Railway Nixpacks Configuration for Playwright
+[phases.setup]
+nixPkgs = ["playwright-driver.browsers", "chromium"]
+
+[variables]
+PLAYWRIGHT_BROWSERS_PATH = "0"

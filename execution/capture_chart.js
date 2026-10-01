@@ -1,6 +1,67 @@
 const { chromium } = require('playwright');
 const path = require('path');
 const fs = require('fs');
+const { execSync } = require('child_process');
+
+/**
+ * Launch Chromium with automatic platform detection and self-healing
+ * if the browser binary is missing on cloud containers (e.g. Railway, Docker).
+ */
+async function launchBrowser() {
+  const isLinux = process.platform === 'linux';
+  const launchOptions = {
+    headless: true,
+    args: [
+      '--no-sandbox',
+      '--disable-setuid-sandbox',
+      '--disable-dev-shm-usage',
+      '--disable-gpu',
+      '--disable-infobars',
+      '--window-position=0,0',
+      '--ignore-certificate-errors',
+      '--disable-blink-features=AutomationControlled'
+    ]
+  };
+
+  // On Windows/Mac local environments, try system Chrome/Edge first for instant launch
+  if (!isLinux) {
+    try {
+      return await chromium.launch({ ...launchOptions, channel: 'chrome' });
+    } catch (e1) {
+      try {
+        return await chromium.launch({ ...launchOptions, channel: 'msedge' });
+      } catch (e2) {}
+    }
+  }
+
+  // On Linux (Railway, Docker) or fallback, launch Playwright's Chromium
+  try {
+    return await chromium.launch(launchOptions);
+  } catch (launchErr) {
+    const errMsg = launchErr.message || '';
+    if (
+      errMsg.includes("Executable doesn't exist") ||
+      errMsg.includes("playwright install") ||
+      errMsg.includes("Please run the following command")
+    ) {
+      console.warn('[Capture] Playwright Chromium binary missing in container cache.');
+      console.log('[Capture] Self-annealing: Automatically running npx playwright install chromium...');
+      try {
+        try {
+          execSync('npx playwright install --with-deps chromium', { stdio: 'inherit' });
+        } catch (depErr) {
+          execSync('npx playwright install chromium', { stdio: 'inherit' });
+        }
+        console.log('[Capture] Playwright Chromium installed successfully. Retrying browser launch...');
+        return await chromium.launch(launchOptions);
+      } catch (installErr) {
+        console.error('[Capture] Self-healing browser installation failed:', installErr.message);
+        throw launchErr;
+      }
+    }
+    throw launchErr;
+  }
+}
 
 /**
  * Captures a high-resolution TradingView chart snapshot with custom indicators,
@@ -31,37 +92,13 @@ async function captureTradingViewChart(options = {}) {
 
   console.log(`[Capture] Launching browser to capture: ${chartUrl}`);
   
-  // Launch Chrome or Edge with anti-detection and performance flags
-  let browser;
-  const launchOptions = {
-    headless: true,
-    args: [
-      '--no-sandbox',
-      '--disable-setuid-sandbox',
-      '--disable-infobars',
-      '--window-position=0,0',
-      '--ignore-certifcate-errors',
-      '--ignore-certifcate-errors-spki-list',
-      '--disable-blink-features=AutomationControlled'
-    ]
-  };
-
-  try {
-    browser = await chromium.launch({ ...launchOptions, channel: 'chrome' });
-  } catch (err) {
-    console.warn('[Capture] System Chrome launch failed, falling back to msedge or default chromium:', err.message);
-    try {
-      browser = await chromium.launch({ ...launchOptions, channel: 'msedge' });
-    } catch (edgeErr) {
-      browser = await chromium.launch(launchOptions);
-    }
-  }
+  let browser = await launchBrowser();
 
   const context = await browser.newContext({
     viewport: { width, height },
     deviceScaleFactor: 2, // High-resolution 2x retina snapshot
     colorScheme: 'dark',
-    userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36'
+    userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36'
   });
 
   // Pre-seed dark theme in localStorage for TradingView
@@ -83,7 +120,7 @@ async function captureTradingViewChart(options = {}) {
     }
 
     console.log(`[Capture] Navigating to ${targetUrl}...`);
-    await page.goto(targetUrl, { waitUntil: 'domcontentloaded', timeout: 45000 });
+    await page.goto(targetUrl, { waitUntil: 'domcontentloaded', timeout: 50000 });
 
     // Handle common consent dialogs / popups
     try {
@@ -109,13 +146,13 @@ async function captureTradingViewChart(options = {}) {
     // Wait for the chart canvas to mount and stabilize
     console.log('[Capture] Waiting for chart canvas and indicator layers to render...');
     try {
-      await page.waitForSelector('canvas', { timeout: 20000 });
+      await page.waitForSelector('canvas', { timeout: 25000 });
     } catch (e) {
-      console.warn('[Capture] Warning: Specific canvas selector timed out, proceeding with fallback check.');
+      console.warn('[Capture] Warning: Canvas selector wait completed or timed out, continuing capture.');
     }
 
     // Give indicator layers (Volume Profile, POC, VAH/VAL, Absorption Bubbles) time to calculate and draw
-    await page.waitForTimeout(4000);
+    await page.waitForTimeout(4500);
 
     // Inject CSS to ensure dark theme, hide clutter, headers, toolbars, and expand the pure chart
     await page.evaluate(() => {
@@ -194,7 +231,7 @@ async function captureTradingViewChart(options = {}) {
     throw err;
   } finally {
     if (browser) {
-      await browser.close();
+      await browser.close().catch(() => {});
     }
   }
 }
