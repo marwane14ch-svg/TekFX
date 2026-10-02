@@ -1,8 +1,6 @@
 const fs = require('fs');
 const path = require('path');
 
-const DEFAULT_WEBHOOK_URL = 'https://discord.com/api/webhooks/1555372945415733259/DG8wWjJlgdjJcjcf-rosdDi7R0wArU4PdhlxFhEnNmz0QbUdr-qspJs6NmAvdNEz4QAV';
-
 /**
  * Sends a rich Auction Market Theory analysis with the captured chart snapshot to Discord.
  * 
@@ -11,9 +9,9 @@ const DEFAULT_WEBHOOK_URL = 'https://discord.com/api/webhooks/155537294541573325
  * @returns {Promise<boolean>}
  */
 async function sendAnalysisToDiscord(analysis, snapshotFullPath) {
-  const webhookUrl = process.env.DISCORD_WEBHOOK_URL || DEFAULT_WEBHOOK_URL;
-  if (!webhookUrl) {
-    console.warn('[Discord] No webhook URL configured, skipping notification.');
+  const webhookUrl = process.env.DISCORD_WEBHOOK_URL;
+  if (!webhookUrl || webhookUrl.includes('your_discord_webhook')) {
+    console.warn('[Discord] No DISCORD_WEBHOOK_URL configured in environment variables. Skipping notification.');
     return false;
   }
 
@@ -159,6 +157,5 @@ async function sendAnalysisToDiscord(analysis, snapshotFullPath) {
 }
 
 module.exports = {
-  sendAnalysisToDiscord,
-  DEFAULT_WEBHOOK_URL
+  sendAnalysisToDiscord
 };
