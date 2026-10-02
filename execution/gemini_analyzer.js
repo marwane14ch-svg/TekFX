@@ -49,8 +49,8 @@ async function analyzeChartWithGemini(imagePath, options = {}) {
   const assetHint = options.asset || 'XAU/USD';
   const newsItems = options.newsItems || [];
 
-  // Candidate models: prioritize requested model, with resilience fallbacks across Google AI pools
-  const fallbackCandidates = ['gemini-3.8-flash', 'gemini-2.5-flash', 'gemini-2.0-flash', 'gemini-1.5-flash'];
+  // Candidate models: prioritize requested model, with resilience fallbacks across active Gemini 3 family
+  const fallbackCandidates = ['gemini-3.8-flash', 'gemini-3.7-flash', 'gemini-3.5-flash', 'gemini-3.1-pro'];
   const modelsToTry = [primaryModel, ...fallbackCandidates.filter(m => m !== primaryModel)];
 
   // Resolve absolute path
