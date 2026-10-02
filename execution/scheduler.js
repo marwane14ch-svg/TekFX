@@ -2,7 +2,7 @@ const cron = require('node-cron');
 const { captureTradingViewChart } = require('./capture_chart');
 const { analyzeChartWithGemini } = require('./gemini_analyzer');
 const { saveAnalysis } = require('./db');
-const { sendWhatsAppAnalysis } = require('./whatsapp_notifier');
+const { sendAnalysisToDiscord } = require('./discord_notifier');
 
 // Defined market sessions in UTC
 const SCHEDULED_SESSIONS = [
@@ -103,21 +103,19 @@ async function runAnalysisPipeline(options = {}) {
     });
 
     // Step 3: Persist into Database
-    console.log('[Pipeline] Step 3/4: Storing structured analysis in database...');
+    console.log('[Pipeline] Step 3/3: Storing structured analysis in database...');
     const savedRecord = saveAnalysis({
       ...analysisJson,
       session_name: sessionName,
       image_path: snapshot.imagePath
     });
 
-    // Step 4: Dispatch WhatsApp Alert to configured recipient
-    console.log('[Pipeline] Step 4/4: Dispatching WhatsApp alert...');
+    // Step 4: Dispatch to Discord Webhook
+    console.log('[Pipeline] Step 4/4: Dispatching analysis to Discord webhook...');
     try {
-      const waResult = await sendWhatsAppAnalysis(savedRecord);
-      savedRecord.whatsapp_status = waResult.success ? 'sent' : (waResult.provider === 'none' ? 'preview_only' : 'failed');
-    } catch (waErr) {
-      console.warn('[Pipeline] WhatsApp notification warning:', waErr.message);
-      savedRecord.whatsapp_status = 'failed';
+      await sendAnalysisToDiscord(savedRecord, snapshot.fullPath);
+    } catch (discordErr) {
+      console.warn('[Pipeline] Discord notification encountered an issue, but analysis is preserved:', discordErr.message);
     }
 
     console.log(`[Pipeline] Completed successfully! Saved analysis #${savedRecord.id}`);

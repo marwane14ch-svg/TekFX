@@ -232,25 +232,6 @@ body {
   text-decoration: underline;
 }
 
-.wa-badge-container {
-  display: flex;
-  align-items: center;
-  gap: 7px;
-  background-color: rgba(37, 211, 102, 0.1);
-  border: 1px solid rgba(37, 211, 102, 0.35);
-  padding: 6px 14px;
-  border-radius: 20px;
-  font-size: 11.5px;
-  color: #25d366;
-  font-family: var(--font-mono);
-  font-weight: 600;
-}
-
-.wa-badge-container svg {
-  color: #25d366;
-  flex-shrink: 0;
-}
-
 /* Primary Button */
 .btn-primary {
   background: linear-gradient(135deg, #2563eb, #1d4ed8);
@@ -529,29 +510,6 @@ body {
   color: #ffffff;
   transform: translateY(-1px);
   box-shadow: 0 4px 12px rgba(37, 99, 235, 0.25);
-}
-
-.btn-whatsapp-action {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  background: rgba(37, 211, 102, 0.15);
-  border: 1px solid rgba(37, 211, 102, 0.4);
-  color: #25d366;
-  padding: 5px 12px;
-  border-radius: 6px;
-  font-size: 11.5px;
-  font-weight: 600;
-  text-decoration: none;
-  transition: all 0.2s ease;
-}
-
-.btn-whatsapp-action:hover {
-  background: rgba(37, 211, 102, 0.3);
-  border-color: #25d366;
-  color: #ffffff;
-  transform: translateY(-1px);
-  box-shadow: 0 4px 12px rgba(37, 211, 102, 0.25);
 }
 
 .chart-overlay-layout {
