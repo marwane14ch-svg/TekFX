@@ -121,11 +121,11 @@ async function captureTradingViewChart(options = {}) {
     }
 
     console.log(`[Capture] Navigating to ${targetUrl}...`);
-    await page.goto(targetUrl, { waitUntil: 'domcontentloaded', timeout: 50000 });
+    await page.goto(targetUrl, { waitUntil: 'domcontentloaded', timeout: 25000 });
 
     // Handle common consent dialogs / popups
     try {
-      await page.waitForTimeout(2000);
+      await page.waitForTimeout(1500);
       const consentButtons = [
         '#onetrust-accept-btn-handler',
         'button[data-name="accept-cookies"]',
@@ -147,7 +147,7 @@ async function captureTradingViewChart(options = {}) {
     // Wait for the chart canvas to mount and stabilize
     console.log('[Capture] Waiting for chart canvas and indicator layers to render...');
     try {
-      await page.waitForSelector('canvas', { timeout: 25000 });
+      await page.waitForSelector('canvas', { timeout: 12000 });
     } catch (e) {
       console.warn('[Capture] Warning: Canvas selector wait completed or timed out, continuing capture.');
     }
