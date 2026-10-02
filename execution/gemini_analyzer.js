@@ -49,8 +49,8 @@ async function analyzeChartWithGemini(imagePath, options = {}) {
   const assetHint = options.asset || 'XAU/USD';
   const newsItems = options.newsItems || [];
 
-  // Candidate models: prioritize requested model, with resilience fallbacks across active Gemini 3 family
-  const fallbackCandidates = ['gemini-3.8-flash', 'gemini-3.7-flash', 'gemini-3.5-flash', 'gemini-3.1-pro'];
+  // Active models: strictly Gemini 3.8 and Gemini 3.5
+  const fallbackCandidates = ['gemini-3.8-flash', 'gemini-3.5-flash'];
   const modelsToTry = [primaryModel, ...fallbackCandidates.filter(m => m !== primaryModel)];
 
   // Resolve absolute path
@@ -177,7 +177,8 @@ Return valid JSON matching the exact schema requested, including the "news_macro
       );
 
       if (isCapacityOrVersionIssue) {
-        console.warn(`[Gemini] Auto-failover: ${currentModel} is busy or unavailable. Seamlessly trying next model candidate in pool...`);
+        console.warn(`[Gemini] Auto-failover: ${currentModel} notice (${errMsg.slice(0, 80)}). Transitioning to next active model...`);
+        await new Promise(r => setTimeout(r, 1200));
         continue;
       }
 
