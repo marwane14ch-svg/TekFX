@@ -50,40 +50,98 @@ ${analysis.price_action_summary || 'Acceptance and rotation within value boundar
 }
 
 /**
- * Dispatches WhatsApp message using CallMeBot, Twilio, or generic webhook.
+ * Returns a direct one-click WhatsApp URL (wa.me) that opens the user's personal WhatsApp
+ * with the pre-filled analysis report ready to send to themselves with one tap.
+ */
+function getWhatsAppDirectUrl(analysis, phone = '+212648863582') {
+  const cleanPhone = (phone || process.env.WHATSAPP_PHONE || '212648863582').replace(/[^0-9]/g, '');
+  const textMessage = formatWhatsAppMessage(analysis);
+  return `https://wa.me/${cleanPhone}?text=${encodeURIComponent(textMessage)}`;
+}
+
+/**
+ * Dispatches notification using Green-API (Personal WhatsApp QR code), Telegram, CallMeBot, or Twilio.
  * 
  * @param {Object} analysis - Analysis record
- * @returns {Promise<{success: boolean, provider: string, message?: string}>}
+ * @returns {Promise<{success: boolean, provider: string, message?: string, directUrl?: string}>}
  */
 async function sendWhatsAppAnalysis(analysis) {
   const recipient = process.env.WHATSAPP_PHONE || '+212648863582';
-  const cleanPhone = recipient.replace(/[^0-9]/g, ''); // e.g. 212648863582
+  const cleanPhone = recipient.replace(/[^0-9]/g, ''); // 212648863582
   const textMessage = formatWhatsAppMessage(analysis);
+  const directUrl = getWhatsAppDirectUrl(analysis, cleanPhone);
 
-  console.log(`[WhatsApp] Preparing notification for: +${cleanPhone}`);
+  console.log(`[Notification] Preparing dispatch for: +${cleanPhone}`);
 
-  // Provider 1: CallMeBot (Free, zero-signup instant WhatsApp gateway)
+  // Provider 1: Green-API (Uses your personal WhatsApp account by scanning a QR code)
+  const greenInstance = process.env.GREEN_API_INSTANCE_ID;
+  const greenToken = process.env.GREEN_API_TOKEN;
+  if (greenInstance && greenToken) {
+    console.log('[Notification] Sending via your Personal WhatsApp (Green-API)...');
+    try {
+      const url = `https://api.green-api.com/waInstance${greenInstance}/sendMessage/${greenToken}`;
+      const response = await fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          chatId: `${cleanPhone}@c.us`,
+          message: textMessage
+        })
+      });
+      const resJson = await response.json();
+      console.log('[Notification] Green-API result:', resJson);
+      return { success: response.ok, provider: 'green-api', data: resJson, directUrl };
+    } catch (err) {
+      console.error('[Notification] Green-API failed:', err.message);
+    }
+  }
+
+  // Provider 2: Telegram Bot (The #1 free, instant, 100% reliable alert system for traders)
+  const tgToken = process.env.TELEGRAM_BOT_TOKEN;
+  const tgChatId = process.env.TELEGRAM_CHAT_ID;
+  if (tgToken && tgChatId) {
+    console.log('[Notification] Sending via Telegram Bot to personal chat...');
+    try {
+      const url = `https://api.telegram.org/bot${tgToken}/sendMessage`;
+      const response = await fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          chat_id: tgChatId,
+          text: textMessage,
+          parse_mode: 'Markdown'
+        })
+      });
+      const resJson = await response.json();
+      console.log('[Notification] Telegram message status:', resJson.ok);
+      return { success: resJson.ok, provider: 'telegram', data: resJson, directUrl };
+    } catch (err) {
+      console.error('[Notification] Telegram dispatch failed:', err.message);
+    }
+  }
+
+  // Provider 3: CallMeBot WhatsApp Gateway
   const callmebotKey = process.env.CALLMEBOT_API_KEY;
   if (callmebotKey) {
-    console.log('[WhatsApp] Sending via CallMeBot gateway...');
+    console.log('[Notification] Sending via CallMeBot gateway...');
     try {
       const url = `https://api.callmebot.com/whatsapp.php?phone=${cleanPhone}&text=${encodeURIComponent(textMessage)}&apikey=${callmebotKey}`;
       const response = await fetch(url);
       const body = await response.text();
-      console.log('[WhatsApp] CallMeBot response:', body);
-      return { success: true, provider: 'callmebot', response: body };
+      console.log('[Notification] CallMeBot response:', body);
+      return { success: true, provider: 'callmebot', response: body, directUrl };
     } catch (err) {
-      console.error('[WhatsApp] CallMeBot dispatch failed:', err.message);
+      console.error('[Notification] CallMeBot dispatch failed:', err.message);
     }
   }
 
-  // Provider 2: Twilio WhatsApp API
+  // Provider 4: Twilio WhatsApp API
   const twilioSid = process.env.TWILIO_ACCOUNT_SID;
   const twilioToken = process.env.TWILIO_AUTH_TOKEN;
-  const twilioFrom = process.env.TWILIO_WHATSAPP_NUMBER || 'whatsapp:+14155238886'; // default Twilio sandbox
+  const twilioFrom = process.env.TWILIO_WHATSAPP_NUMBER || 'whatsapp:+14155238886';
 
   if (twilioSid && twilioToken) {
-    console.log('[WhatsApp] Sending via Twilio API...');
+    console.log('[Notification] Sending via Twilio API...');
     try {
       const twilioUrl = `https://api.twilio.com/2010-04-01/Accounts/${twilioSid}/Messages.json`;
       const formData = new URLSearchParams();
@@ -102,50 +160,30 @@ async function sendWhatsAppAnalysis(analysis) {
       });
 
       const resJson = await response.json();
-      console.log('[WhatsApp] Twilio message status:', resJson.status, resJson.sid);
-      return { success: response.ok, provider: 'twilio', data: resJson };
+      console.log('[Notification] Twilio message status:', resJson.status, resJson.sid);
+      return { success: response.ok, provider: 'twilio', data: resJson, directUrl };
     } catch (err) {
-      console.error('[WhatsApp] Twilio dispatch failed:', err.message);
+      console.error('[Notification] Twilio dispatch failed:', err.message);
     }
   }
 
-  // Provider 3: Generic Custom Webhook
-  const webhookUrl = process.env.WHATSAPP_WEBHOOK_URL;
-  if (webhookUrl) {
-    console.log('[WhatsApp] Sending via custom WhatsApp webhook...');
-    try {
-      const response = await fetch(webhookUrl, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          phone: `+${cleanPhone}`,
-          message: textMessage,
-          analysis
-        })
-      });
-      const resData = await response.text();
-      return { success: response.ok, provider: 'webhook', data: resData };
-    } catch (err) {
-      console.error('[WhatsApp] Webhook dispatch failed:', err.message);
-    }
-  }
-
-  // If no credentials configured yet
+  // Default: Direct wa.me link & console preview
   console.log('------------------------------------------------------');
-  console.log('[WhatsApp Notification Preview for +' + cleanPhone + ']:');
-  console.log(textMessage);
+  console.log('[WhatsApp One-Click Direct Link for +' + cleanPhone + ']:');
+  console.log(directUrl);
   console.log('------------------------------------------------------');
-  console.log('[WhatsApp] Note: Set CALLMEBOT_API_KEY or TWILIO credentials in Railway variables to enable instant mobile delivery.');
 
   return {
     success: false,
     provider: 'none',
     preview: textMessage,
+    directUrl,
     recipient: `+${cleanPhone}`
   };
 }
 
 module.exports = {
   sendWhatsAppAnalysis,
-  formatWhatsAppMessage
+  formatWhatsAppMessage,
+  getWhatsAppDirectUrl
 };
