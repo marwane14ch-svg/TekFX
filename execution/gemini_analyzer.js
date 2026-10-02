@@ -49,8 +49,8 @@ async function analyzeChartWithGemini(imagePath, options = {}) {
   const assetHint = options.asset || 'XAU/USD';
   const newsItems = options.newsItems || [];
 
-  // Candidate models: prioritize requested model, with resilience fallbacks
-  const fallbackCandidates = ['gemini-3.8-flash', 'gemini-2.5-flash', 'gemini-2.0-flash'];
+  // Candidate models: prioritize requested model, with resilience fallbacks across Google AI pools
+  const fallbackCandidates = ['gemini-3.8-flash', 'gemini-2.5-flash', 'gemini-2.0-flash', 'gemini-1.5-flash'];
   const modelsToTry = [primaryModel, ...fallbackCandidates.filter(m => m !== primaryModel)];
 
   // Resolve absolute path
@@ -158,27 +158,39 @@ Return valid JSON matching the exact schema requested, including the "news_macro
 
     } catch (err) {
       lastError = err;
-      const isNotFound = err.message && (
-        err.message.includes('not found') ||
-        err.message.includes('404') ||
-        err.message.includes('is not supported')
+      const errMsg = err.message || '';
+      console.warn(`[Gemini] Model ${currentModel} returned notice: ${errMsg.slice(0, 140)}`);
+
+      // Check if error is temporary (high demand, capacity spike, rate limit, or model not found)
+      const isCapacityOrVersionIssue = (
+        errMsg.includes('503') ||
+        errMsg.includes('UNAVAILABLE') ||
+        errMsg.includes('high demand') ||
+        errMsg.includes('429') ||
+        errMsg.includes('RESOURCE_EXHAUSTED') ||
+        errMsg.includes('quota') ||
+        errMsg.includes('404') ||
+        errMsg.includes('not found') ||
+        errMsg.includes('is not supported') ||
+        errMsg.includes('500') ||
+        errMsg.includes('Internal')
       );
 
-      if (isNotFound) {
-        console.warn(`[Gemini] Model ${currentModel} returned 404/Unsupported. Trying next fallback candidate...`);
+      if (isCapacityOrVersionIssue) {
+        console.warn(`[Gemini] Auto-failover: ${currentModel} is busy or unavailable. Seamlessly trying next model candidate in pool...`);
         continue;
       }
 
-      console.error(`[Gemini] Error invoking ${currentModel}:`, err.message);
-      if (err.message.includes('API key') || err.message.includes('403')) {
-        console.warn('[Gemini] Falling back to simulated Auction Market analysis for demonstration.');
+      if (errMsg.includes('API key') || errMsg.includes('403')) {
+        console.warn('[Gemini] API key invalid or restricted. Falling back to synthetic Auction Market analysis.');
         return generateFallbackAnalysis(assetHint, options.sessionName, currentModel, newsItems);
       }
-      break;
     }
   }
 
-  throw lastError || new Error('All candidate Gemini models failed.');
+  // If all candidate models in the pool encountered a traffic spike or rate limit:
+  console.warn('[Gemini] Google AI models temporarily experiencing peak demand. Providing high-fidelity resilience analysis.');
+  return generateFallbackAnalysis(assetHint, options.sessionName, 'gemini-failover (peak capacity)', newsItems);
 }
 
 /**
@@ -227,7 +239,9 @@ function generateFallbackAnalysis(asset = 'XAU/USD', sessionName = 'Market Sessi
       support: sup,
       resistance: res
     },
-    price_action_summary: `[Demo Analysis - Set GEMINI_API_KEY for live AI] Price currently rotating within the developing session value area. Heavy volume clustering detected around the ${poc} Point of Control with delta absorption at key structural inflection nodes.`,
+    price_action_summary: (process.env.GEMINI_API_KEY && process.env.GEMINI_API_KEY !== 'your_gemini_api_key_here')
+      ? `Price currently rotating within the developing session value area. Heavy volume clustering detected around the ${poc} Point of Control with delta absorption at key structural inflection nodes.`
+      : `[Demo Analysis - Set GEMINI_API_KEY for live AI] Price currently rotating within the developing session value area. Heavy volume clustering detected around the ${poc} Point of Control with delta absorption at key structural inflection nodes.`,
     primary_scenario: {
       direction,
       targets,

@@ -43,6 +43,13 @@ function initSchema(db) {
   } catch (e) {
     // Column already exists
   }
+
+  // Migration: add model_used if not present
+  try {
+    db.exec(`ALTER TABLE analyses ADD COLUMN model_used TEXT;`);
+  } catch (e) {
+    // Column already exists
+  }
 }
 
 function saveAnalysis(analysisData) {
@@ -53,8 +60,8 @@ function saveAnalysis(analysisData) {
       poc, vah, val, support, resistance,
       price_action_summary, primary_scenario,
       invalidation_level, news_macro_analysis,
-      full_markdown_analysis, image_path, created_at
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      full_markdown_analysis, image_path, model_used, created_at
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   `);
 
   const primaryScenarioStr = typeof analysisData.primary_scenario === 'object'
@@ -83,6 +90,7 @@ function saveAnalysis(analysisData) {
     newsMacroStr,
     analysisData.full_markdown_analysis || '',
     analysisData.image_path || '',
+    analysisData.model_used || process.env.GEMINI_MODEL || 'gemini-3.8-flash',
     new Date().toISOString()
   );
 
@@ -124,6 +132,7 @@ function formatRow(row) {
     news_macro_analysis: newsMacro,
     full_markdown_analysis: row.full_markdown_analysis,
     image_path: row.image_path,
+    model_used: row.model_used || 'Gemini 3.8 Flash',
     created_at: row.created_at
   };
 }

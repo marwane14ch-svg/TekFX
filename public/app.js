@@ -321,6 +321,17 @@ function renderArchive() {
   });
 }
 
+function showNotice(msg, type = 'warning') {
+  if (!noticeBanner) return;
+  noticeBanner.classList.remove('hidden');
+  noticeBanner.innerHTML = `<strong>${type === 'error' ? 'Notice:' : 'System:'}</strong> ${msg}`;
+  if (type === 'error' || type === 'success') {
+    setTimeout(() => {
+      fetchStatus();
+    }, 8000);
+  }
+}
+
 // Manual Trigger Handler
 btnTriggerManual.addEventListener('click', async () => {
   if (state.isAnalyzing) return;
@@ -352,11 +363,14 @@ btnTriggerManual.addEventListener('click', async () => {
     if (json.success && json.data) {
       state.currentAnalysis = json.data;
       await fetchAnalyses();
+      showNotice('Analysis completed successfully and synchronized to Discord.', 'success');
     } else {
-      alert('Analysis trigger returned error: ' + (json.error || 'Unknown error'));
+      let errDetail = json.error || 'Server reported an error during analysis.';
+      if (typeof errDetail === 'object') errDetail = JSON.stringify(errDetail);
+      showNotice(errDetail, 'error');
     }
   } catch (err) {
-    alert('Failed to trigger analysis: ' + err.message);
+    showNotice(err.message || 'Network error triggering analysis.', 'error');
   } finally {
     state.isAnalyzing = false;
     btnTriggerManual.disabled = false;
