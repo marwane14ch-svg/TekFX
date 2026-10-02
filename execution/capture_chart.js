@@ -87,7 +87,8 @@ async function captureTradingViewChart(options = {}) {
   }
 
   const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
-  const filename = `snapshot_${sessionName.toLowerCase().replace(/\s+/g, '_')}_${timestamp}.png`;
+  const safeSession = sessionName.toLowerCase().replace(/[^a-z0-9_-]/gi, '_');
+  const filename = `snapshot_${safeSession}_${timestamp}.png`;
   const fullOutputPath = path.join(outputDir, filename);
 
   console.log(`[Capture] Launching browser to capture: ${chartUrl}`);

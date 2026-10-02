@@ -141,6 +141,17 @@
           </div>
           <div class="metric-footer">Hard Exit / Thesis Fail Level</div>
         </div>
+
+        <div class="metric-card level-macro">
+          <div class="metric-header">
+            <span class="metric-title">MACRO BIAS (GOLD)</span>
+            <span class="level-indicator macro-tag">Fed & DXY</span>
+          </div>
+          <div class="metric-value-container">
+            <span id="metricMacroSentiment" class="badge-bias bias-neutral" style="font-size: 16px; padding: 3px 12px;">--</span>
+          </div>
+          <div class="metric-footer" id="metricMacroSub">Rates, Dollar & Safe Haven</div>
+        </div>
       </section>
 
       <!-- Split View Panel -->
@@ -216,6 +227,45 @@
                 Structure & Price Action Summary
               </h3>
               <p id="analysisPriceAction" class="analysis-text">Loading analysis...</p>
+            </div>
+
+            <!-- Macroeconomic & News Catalysts (XAU/USD) -->
+            <div class="section-box macro-box">
+              <div class="macro-header-row">
+                <h3 class="section-title" style="color: #facc15; margin-bottom: 0;">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <circle cx="12" cy="12" r="10"></circle>
+                    <line x1="2" y1="12" x2="22" y2="12"></line>
+                    <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"></path>
+                  </svg>
+                  Macro & News Catalysts (XAU/USD)
+                </h3>
+                <span id="macroSentimentBadge" class="badge-bias bias-neutral" style="font-size: 11px; padding: 2px 8px;">CALCULATING</span>
+              </div>
+              <p id="macroSummaryText" class="analysis-text" style="margin-top: 10px;">Loading macroeconomic assessment...</p>
+
+              <div class="macro-detail-group">
+                <div class="macro-sub-title">Key Gold Drivers & Catalysts:</div>
+                <div id="macroCatalystsList" class="macro-chips-container">--</div>
+              </div>
+
+              <div class="macro-impact-card" id="macroYieldImpactCard">
+                <div class="impact-label">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <line x1="12" y1="1" x2="12" y2="23"></line>
+                    <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path>
+                  </svg>
+                  DXY & Treasury Yield Impact:
+                </div>
+                <div id="macroDxyImpact" class="impact-text">Evaluating currency & bond yields correlation...</div>
+              </div>
+
+              <div class="macro-risks-group">
+                <div class="macro-sub-title">Upcoming High-Impact Risk Events:</div>
+                <ul id="macroRiskList" class="macro-risk-bullets">
+                  <li>Evaluating economic calendar...</li>
+                </ul>
+              </div>
             </div>
 
             <!-- Primary Scenario & Execution Plan -->

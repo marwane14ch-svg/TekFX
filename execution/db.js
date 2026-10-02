@@ -30,11 +30,19 @@ function initSchema(db) {
       price_action_summary TEXT,
       primary_scenario TEXT,
       invalidation_level REAL,
+      news_macro_analysis TEXT,
       full_markdown_analysis TEXT,
       image_path TEXT NOT NULL,
       created_at TEXT NOT NULL
     );
   `);
+
+  // Migration: add news_macro_analysis if not present
+  try {
+    db.exec(`ALTER TABLE analyses ADD COLUMN news_macro_analysis TEXT;`);
+  } catch (e) {
+    // Column already exists
+  }
 }
 
 function saveAnalysis(analysisData) {
@@ -44,21 +52,25 @@ function saveAnalysis(analysisData) {
       timestamp, session_name, asset, bias,
       poc, vah, val, support, resistance,
       price_action_summary, primary_scenario,
-      invalidation_level, full_markdown_analysis,
-      image_path, created_at
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      invalidation_level, news_macro_analysis,
+      full_markdown_analysis, image_path, created_at
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   `);
 
   const primaryScenarioStr = typeof analysisData.primary_scenario === 'object'
     ? JSON.stringify(analysisData.primary_scenario)
     : (analysisData.primary_scenario || '{}');
 
+  const newsMacroStr = typeof analysisData.news_macro_analysis === 'object'
+    ? JSON.stringify(analysisData.news_macro_analysis)
+    : (analysisData.news_macro_analysis || '{}');
+
   const keyLevels = analysisData.key_levels || {};
 
   const info = stmt.run(
     analysisData.timestamp || new Date().toISOString(),
     analysisData.session_name || 'Manual Analysis',
-    analysisData.asset || 'BTC/USDT',
+    analysisData.asset || 'XAU/USD',
     (analysisData.bias || 'NEUTRAL').toUpperCase(),
     Number(keyLevels.poc ?? analysisData.poc ?? 0),
     Number(keyLevels.vah ?? analysisData.vah ?? 0),
@@ -68,6 +80,7 @@ function saveAnalysis(analysisData) {
     analysisData.price_action_summary || '',
     primaryScenarioStr,
     Number(analysisData.invalidation_level ?? 0),
+    newsMacroStr,
     analysisData.full_markdown_analysis || '',
     analysisData.image_path || '',
     new Date().toISOString()
@@ -83,6 +96,13 @@ function formatRow(row) {
     primaryScenario = JSON.parse(row.primary_scenario || '{}');
   } catch (e) {
     primaryScenario = { raw: row.primary_scenario };
+  }
+
+  let newsMacro = {};
+  try {
+    newsMacro = JSON.parse(row.news_macro_analysis || '{}');
+  } catch (e) {
+    newsMacro = { macro_summary: row.news_macro_analysis };
   }
 
   return {
@@ -101,6 +121,7 @@ function formatRow(row) {
     price_action_summary: row.price_action_summary,
     primary_scenario: primaryScenario,
     invalidation_level: row.invalidation_level,
+    news_macro_analysis: newsMacro,
     full_markdown_analysis: row.full_markdown_analysis,
     image_path: row.image_path,
     created_at: row.created_at
@@ -133,54 +154,35 @@ function seedInitialDataIfEmpty() {
     saveAnalysis({
       timestamp: '2026-10-01T07:00:00Z',
       session_name: 'London Open',
-      asset: 'BTC/USDT (Perp)',
+      asset: 'XAU/USD (Gold)',
       bias: 'BULLISH',
       key_levels: {
-        poc: 64250,
-        vah: 65100,
-        val: 63800,
-        support: 63500,
-        resistance: 65800
+        poc: 2648.50,
+        vah: 2662.00,
+        val: 2638.20,
+        support: 2630.00,
+        resistance: 2675.00
       },
-      price_action_summary: 'Price accepted above developing VAH with aggressive bid absorption at 64,250 POC during early European session. Value migration skewed higher.',
+      price_action_summary: 'Gold accepted above developing session VAH with heavy bid absorption at $2,648 POC. Buyers defending value against US Dollar pressure.',
       primary_scenario: {
         direction: 'Bullish Continuation',
-        targets: [65100, 65800, 66400],
-        trigger: 'Sustained acceptance above 64,500 on 15m volume expansion.'
+        targets: [2662.00, 2675.00, 2690.00],
+        trigger: 'Acceptance above 2,652.00 during European session volume expansion.'
       },
-      invalidation_level: 63800,
-      full_markdown_analysis: `### Auction Market Theory Breakdown
-- **Value Area:** Developing Value Area High at **$65,100** and Value Area Low at **$63,800**.
-- **Point of Control (POC):** High-volume accumulation node confirmed at **$64,250**.
-- **Order Flow & Absorption:** Large delta absorption clusters visible in the lower quadrant of the rotation, showing passive institutional limits catching the dips.
-- **Expectation:** Responsive buying into London Open creates rotational upside toward prior weekly high liquidity pools.`,
+      invalidation_level: 2638.20,
+      news_macro_analysis: {
+        sentiment: 'BULLISH',
+        gold_catalysts: ['Fed rate cut expectations', 'DXY weakness', 'Middle East geopolitical safe-haven bids', 'Central bank accumulation'],
+        dxy_yield_impact: '10-Year US Treasury yields retreating below 4.05% lowers opportunity cost of holding non-yielding bullion; DXY under structural pressure.',
+        macro_summary: 'Dovish FOMC rhetoric combined with heightened geopolitical safe-haven flows continues to provide fundamental tailwinds for Gold bullion.',
+        high_impact_risk_factors: ['US Core PCE Inflation release', 'Fed Chair Powell press briefing', 'Upcoming Non-Farm Payrolls']
+      },
+      full_markdown_analysis: `### Auction Market Theory & Macro Breakdown
+- **Asset:** XAU/USD (Spot Gold)
+- **Value Area:** VAH at **$2,662.00**, VAL at **$2,638.20**.
+- **Point of Control (POC):** Primary auction node at **$2,648.50**.
+- **Macro Alignment:** Macro catalysts strongly support the technical auction structure. Bullish initiative buying aligning with softening US Dollar index.`,
       image_path: '/snapshots/sample_chart_london.png'
-    });
-
-    saveAnalysis({
-      timestamp: '2026-10-01T12:30:00Z',
-      session_name: 'New York Open',
-      asset: 'BTC/USDT (Perp)',
-      bias: 'BULLISH',
-      key_levels: {
-        poc: 64800,
-        vah: 65450,
-        val: 64200,
-        support: 64000,
-        resistance: 66200
-      },
-      price_action_summary: 'Breakout from rotational balance. Initial Balance (IB) established between 64,600 and 65,200 with initiative buying continuing into the US cash open.',
-      primary_scenario: {
-        direction: 'Trend Day Extension',
-        targets: [65800, 66500],
-        trigger: 'Retest and hold of session POC at 64,800.'
-      },
-      invalidation_level: 64200,
-      full_markdown_analysis: `### Auction Market Theory Breakdown
-- **Structure:** Double-distribution profile emerging. Volume concentrated in two distinct nodes, characteristic of an initiative drive.
-- **Value Migration:** Value has cleanly shifted up from the London session. Price trading in single prints above $65,000.
-- **Risk Assessment:** Any auction back inside the prior session VAH ($64,200) invalidates the momentum scenario and triggers a mean-reversion re-auction down to $63,800.`,
-      image_path: '/snapshots/sample_chart_ny.png'
     });
   }
 }

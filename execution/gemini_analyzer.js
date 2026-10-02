@@ -3,12 +3,14 @@ const fs = require('fs');
 const path = require('path');
 const { GoogleGenAI } = require('@google/genai');
 
-const SYSTEM_INSTRUCTION = `You are an expert Auction Market Theory and Volume Profile technical analyst.
-Analyze the provided candlestick chart and volume profile:
+const SYSTEM_INSTRUCTION = `You are an expert Auction Market Theory, Volume Profile, and Global Macroeconomic technical analyst specializing in Gold (XAU/USD), currencies, and commodities.
+Analyze the provided candlestick chart, volume profile, AND the breaking macroeconomic news headlines:
 1. Identify Key Levels: Point of Control (POC), Value Area High (VAH), Value Area Low (VAL), and key swing points/institutional levels.
 2. Structure & Price Action: Determine if price is balancing, breaking out, liquidating, or absorbing at key volume nodes.
 3. Directional Bias: State immediate probability (Bullish continuation, Bearish continuation, or Mean Reversion back to Value).
-4. Scenarios & Trade Plan:
+4. Macro & News Catalyst Synthesis:
+   Analyze how recent macroeconomic events (Fed interest rate stance, inflation/CPI, US Dollar DXY trajectory, Treasury yields, central bank buying, geopolitical safe-haven flows) intersect with the current auction structure.
+5. Scenarios & Trade Plan:
    - Primary Scenario: Target levels and trigger conditions.
    - Invalidation / Risk Level: Exact level where the bias fails.
 Return the output in a clean, structured JSON format containing:
@@ -20,23 +22,32 @@ Return the output in a clean, structured JSON format containing:
   "price_action_summary": string,
   "primary_scenario": { "direction": string, "targets": [number], "trigger": string },
   "invalidation_level": number,
+  "news_macro_analysis": {
+    "sentiment": "BULLISH" | "BEARISH" | "NEUTRAL",
+    "gold_catalysts": [string],
+    "dxy_yield_impact": string,
+    "macro_summary": string,
+    "high_impact_risk_factors": [string]
+  },
   "full_markdown_analysis": string
 }`;
 
 /**
- * Analyzes a chart screenshot using Gemini Multimodal API.
+ * Analyzes a chart screenshot and macro news using Gemini Multimodal API.
  * Defaults to the latest Gemini 3.8 Flash model with automatic fallback.
  * 
  * @param {string} imagePath - Absolute or relative path to snapshot PNG
  * @param {Object} [options]
  * @param {string} [options.asset] - Asset identifier
  * @param {string} [options.model] - Gemini model identifier
+ * @param {Array} [options.newsItems] - Array of recent macro news headlines
  * @returns {Promise<Object>} Structured analysis JSON
  */
 async function analyzeChartWithGemini(imagePath, options = {}) {
   const apiKey = process.env.GEMINI_API_KEY;
   const primaryModel = options.model || process.env.GEMINI_MODEL || 'gemini-3.8-flash';
-  const assetHint = options.asset || 'BTC/USDT';
+  const assetHint = options.asset || 'XAU/USD';
+  const newsItems = options.newsItems || [];
 
   // Candidate models: prioritize requested model, with resilience fallbacks
   const fallbackCandidates = ['gemini-3.8-flash', 'gemini-2.5-flash', 'gemini-2.0-flash'];
@@ -61,18 +72,29 @@ async function analyzeChartWithGemini(imagePath, options = {}) {
 
   // If no Gemini API key is configured yet, provide a mock analysis for preview & testing
   if (!apiKey || apiKey === 'your_gemini_api_key_here' || apiKey.trim() === '') {
-    console.warn('[Gemini] No valid GEMINI_API_KEY found in .env. Generating high-fidelity mock AMT analysis.');
-    return generateFallbackAnalysis(assetHint, options.sessionName, primaryModel);
+    console.warn('[Gemini] No valid GEMINI_API_KEY found in .env. Generating high-fidelity mock AMT & Macro analysis.');
+    return generateFallbackAnalysis(assetHint, options.sessionName, primaryModel, newsItems);
   }
 
   const ai = new GoogleGenAI({ apiKey });
-  const promptText = `Please analyze this chart screenshot for ${assetHint}. Focus specifically on the candlestick price action, developing volume profile, Point of Control (POC), Value Area High (VAH), Value Area Low (VAL), and any visible liquidity or absorption bubbles. Return valid JSON matching the exact schema requested.`;
+
+  const newsContext = newsItems.length > 0
+    ? newsItems.map(n => `- ${n.title} [Source: ${n.source}]`).join('\n')
+    : 'No live headlines retrieved; evaluate based on prevailing Fed rate expectations, US Dollar (DXY) trajectory, and safe-haven flows.';
+
+  const promptText = `Please analyze this chart screenshot for ${assetHint} alongside the live macroeconomic headlines below.
+Analyze both the candlestick price action, developing volume profile (POC, VAH, VAL, absorption), and how the macro news catalysts influence the asset's bias.
+
+BREAKING MACROECONOMIC & FINANCIAL NEWS HEADLINES:
+${newsContext}
+
+Return valid JSON matching the exact schema requested, including the "news_macro_analysis" breakdown.`;
 
   let lastError = null;
 
   for (const currentModel of modelsToTry) {
     try {
-      console.log(`[Gemini] Sending chart image (${(imageBuffer.length / 1024).toFixed(1)} KB) to ${currentModel}...`);
+      console.log(`[Gemini] Sending chart image (${(imageBuffer.length / 1024).toFixed(1)} KB) and ${newsItems.length} news headlines to ${currentModel}...`);
 
       const response = await ai.models.generateContent({
         model: currentModel,
@@ -121,6 +143,15 @@ async function analyzeChartWithGemini(imagePath, options = {}) {
       if (!structuredData.key_levels) {
         structuredData.key_levels = { poc: 0, vah: 0, val: 0, support: 0, resistance: 0 };
       }
+      if (!structuredData.news_macro_analysis) {
+        structuredData.news_macro_analysis = {
+          sentiment: structuredData.bias,
+          gold_catalysts: ['Federal Reserve Rate Policy', 'US Dollar (DXY) Fluctuations', 'Safe Haven Flows'],
+          dxy_yield_impact: 'Macro yield conditions exerting moderate pressure on bullion value areas.',
+          macro_summary: 'Macro backdrop interacting with key volume profile boundaries.',
+          high_impact_risk_factors: ['Upcoming FOMC statements', 'US CPI Inflation Data']
+        };
+      }
       structuredData.model_used = currentModel;
 
       return structuredData;
@@ -138,11 +169,10 @@ async function analyzeChartWithGemini(imagePath, options = {}) {
         continue;
       }
 
-      // If authentication error or quota error
       console.error(`[Gemini] Error invoking ${currentModel}:`, err.message);
       if (err.message.includes('API key') || err.message.includes('403')) {
         console.warn('[Gemini] Falling back to simulated Auction Market analysis for demonstration.');
-        return generateFallbackAnalysis(assetHint, options.sessionName, currentModel);
+        return generateFallbackAnalysis(assetHint, options.sessionName, currentModel, newsItems);
       }
       break;
     }
@@ -152,33 +182,38 @@ async function analyzeChartWithGemini(imagePath, options = {}) {
 }
 
 /**
- * High-fidelity fallback Auction Market Theory analysis when API key is not yet set or unavailable.
+ * High-fidelity fallback Auction Market & Macro analysis when API key is not yet set or unavailable.
  */
-function generateFallbackAnalysis(asset = 'BTC/USDT', sessionName = 'Market Session', modelUsed = 'gemini-3.8-flash') {
-  const basePrice = 64500 + Math.floor((Math.random() - 0.5) * 1200);
-  const poc = Math.round(basePrice);
-  const vah = Math.round(basePrice + 650);
-  const val = Math.round(basePrice - 580);
-  const sup = Math.round(val - 350);
-  const res = Math.round(vah + 500);
+function generateFallbackAnalysis(asset = 'XAU/USD', sessionName = 'Market Session', modelUsed = 'gemini-3.8-flash', newsItems = []) {
+  const isGold = asset.toUpperCase().includes('XAU') || asset.toUpperCase().includes('GOLD');
+  const basePrice = isGold ? (2650 + Math.floor((Math.random() - 0.5) * 40)) : (64500 + Math.floor((Math.random() - 0.5) * 1200));
+  const poc = Math.round(basePrice * 10) / 10;
+  const vah = Math.round((basePrice + (isGold ? 18 : 650)) * 10) / 10;
+  const val = Math.round((basePrice - (isGold ? 16 : 580)) * 10) / 10;
+  const sup = Math.round((val - (isGold ? 12 : 350)) * 10) / 10;
+  const res = Math.round((vah + (isGold ? 15 : 500)) * 10) / 10;
 
   const biases = ['BULLISH', 'BEARISH', 'NEUTRAL'];
   const bias = biases[Math.floor(Math.random() * biases.length)];
 
   let direction, trigger, targets;
   if (bias === 'BULLISH') {
-    direction = 'Bullish Continuation above VAH';
-    trigger = `Acceptance and 15m candle close above ${vah} on increasing volume delta.`;
-    targets = [res, Math.round(res + 750)];
+    direction = 'Bullish Expansion above VAH';
+    trigger = `Acceptance and sustained rotation above ${vah} with bid delta absorption.`;
+    targets = [res, Math.round((res + (isGold ? 20 : 750)) * 10) / 10];
   } else if (bias === 'BEARISH') {
     direction = 'Breakdown below Value Area Low';
-    trigger = `Failure to reclaim POC at ${poc}, followed by volume rejection into ${val}.`;
-    targets = [sup, Math.round(sup - 800)];
+    trigger = `Rejection at ${poc} Point of Control followed by volume liquidation into ${val}.`;
+    targets = [sup, Math.round((sup - (isGold ? 20 : 800)) * 10) / 10];
   } else {
     direction = 'Rotational Mean Reversion to POC';
     trigger = `Responsive activity fading the extremes of ${vah} and ${val}.`;
     targets = [poc];
   }
+
+  const sampleHeadlines = newsItems.length > 0
+    ? newsItems.slice(0, 3).map(n => n.title)
+    : ['Markets reassess Fed rate cut magnitude', 'US Dollar Index retreats as yields soften', 'Safe-haven bullion demand solidifies'];
 
   return {
     timestamp: new Date().toISOString(),
@@ -199,15 +234,31 @@ function generateFallbackAnalysis(asset = 'BTC/USDT', sessionName = 'Market Sess
       trigger
     },
     invalidation_level: bias === 'BULLISH' ? val : (bias === 'BEARISH' ? vah : sup),
-    full_markdown_analysis: `### Auction Market Theory & Volume Profile Breakdown
+    news_macro_analysis: {
+      sentiment: bias,
+      gold_catalysts: [
+        'Federal Reserve Rate Expectations & Dot Plot',
+        'US Dollar Index (DXY) Volatility',
+        'Treasury Yield Curve Fluctuations',
+        'Geopolitical Safe-Haven Allocations'
+      ],
+      dxy_yield_impact: 'Yield compression provides underlying structural tailwinds, reducing the carry cost of holding spot Gold.',
+      macro_summary: `Macro drivers indicate ${bias.toLowerCase()} momentum for bullion. Breaking headlines (${sampleHeadlines[0] || 'Federal Reserve stance'}) continue to shape institutional appetite at value boundaries.`,
+      high_impact_risk_factors: [
+        'US Core CPI / PCE Inflation Reports',
+        'FOMC Interest Rate Decisions & Press Conference',
+        'US Non-Farm Payrolls (NFP) Labor Prints'
+      ]
+    },
+    full_markdown_analysis: `### Auction Market Theory & Macroeconomic Breakdown
 - **Engine:** ${modelUsed}
 - **Session:** ${sessionName}
 - **Value Area Assessment:** Value Area High (**$${vah.toLocaleString()}**) and Value Area Low (**$${val.toLocaleString()}**) delineate current accepted fair price.
 - **Point of Control (POC):** Heavy transacted volume centered at **$${poc.toLocaleString()}**, acting as the gravitational anchor for current rotations.
-- **Order Flow & Absorption:** Delta footprint indicates responsive limit orders stepping in near Value extremes. Absorption bubbles confirm passive liquidity defending support nodes.
+- **Macro Backdrop:** Macro catalysts align with the **${bias}** auction posture. Institutional order flow reflects sensitivity to interest rate path and US Dollar trajectory.
 - **Execution Plan:** Maintain bias towards **${bias}** execution contingent upon trigger: *"${trigger}"*.
 
-*(Note: Provide your GEMINI_API_KEY in Railway to receive live multimodal vision analysis)*`
+*(Note: Provide your GEMINI_API_KEY in Railway to receive live multimodal vision and macro news synthesis)*`
   };
 }
 

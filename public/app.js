@@ -189,6 +189,66 @@ function renderCurrentAnalysis() {
   // Analysis Summary
   analysisPriceAction.textContent = a.price_action_summary || 'No price action summary provided.';
 
+  // Macro & News Analysis (XAU/USD)
+  const macro = a.news_macro_analysis || {};
+  const metricMacroSentiment = document.getElementById('metricMacroSentiment');
+  const metricMacroSub = document.getElementById('metricMacroSub');
+  const macroSentimentBadge = document.getElementById('macroSentimentBadge');
+  const macroSummaryText = document.getElementById('macroSummaryText');
+  const macroCatalystsList = document.getElementById('macroCatalystsList');
+  const macroDxyImpact = document.getElementById('macroDxyImpact');
+  const macroRiskList = document.getElementById('macroRiskList');
+
+  const macroSent = (macro.sentiment || a.bias || 'NEUTRAL').toUpperCase();
+  if (metricMacroSentiment) {
+    metricMacroSentiment.textContent = macroSent;
+    metricMacroSentiment.className = `badge-bias bias-${macroSent.toLowerCase()}`;
+  }
+  if (metricMacroSub) {
+    metricMacroSub.textContent = macroSent === 'BULLISH'
+      ? 'Dovish Fed / Yield tailwind for Gold'
+      : (macroSent === 'BEARISH' ? 'Hawkish Fed / Strong DXY headwind' : 'Balanced macro risk catalysts');
+  }
+  if (macroSentimentBadge) {
+    macroSentimentBadge.textContent = macroSent;
+    macroSentimentBadge.className = `badge-bias bias-${macroSent.toLowerCase()}`;
+  }
+  if (macroSummaryText) {
+    macroSummaryText.textContent = macro.macro_summary || 'Macro backdrop correlating with current auction nodes.';
+  }
+
+  // Catalysts Chips
+  if (macroCatalystsList) {
+    macroCatalystsList.innerHTML = '';
+    const catalysts = Array.isArray(macro.gold_catalysts) && macro.gold_catalysts.length > 0
+      ? macro.gold_catalysts
+      : ['Fed Interest Rate Policy', 'US Dollar (DXY) Trajectory', 'Safe Haven Flows'];
+    catalysts.forEach(cat => {
+      const chip = document.createElement('span');
+      chip.className = 'macro-chip';
+      chip.textContent = `⚡ ${cat}`;
+      macroCatalystsList.appendChild(chip);
+    });
+  }
+
+  // DXY & Yields Impact
+  if (macroDxyImpact) {
+    macroDxyImpact.textContent = macro.dxy_yield_impact || 'Evaluating 10Y US Treasury yields and US Dollar Index correlation.';
+  }
+
+  // Risk Factors
+  if (macroRiskList) {
+    macroRiskList.innerHTML = '';
+    const risks = Array.isArray(macro.high_impact_risk_factors) && macro.high_impact_risk_factors.length > 0
+      ? macro.high_impact_risk_factors
+      : ['FOMC Interest Rate Decisions', 'US Core CPI / PCE Inflation', 'US Non-Farm Payrolls (NFP)'];
+    risks.forEach(r => {
+      const li = document.createElement('li');
+      li.textContent = r;
+      macroRiskList.appendChild(li);
+    });
+  }
+
   // Primary Scenario
   const scenario = a.primary_scenario || {};
   scenarioDirection.textContent = scenario.direction || 'Mean Reversion';

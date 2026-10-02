@@ -3,6 +3,7 @@ const { captureTradingViewChart } = require('./capture_chart');
 const { analyzeChartWithGemini } = require('./gemini_analyzer');
 const { saveAnalysis } = require('./db');
 const { sendAnalysisToDiscord } = require('./discord_notifier');
+const { fetchGoldMacroNews } = require('./news_fetcher');
 
 // Defined market sessions in UTC
 const SCHEDULED_SESSIONS = [
@@ -89,29 +90,39 @@ async function runAnalysisPipeline(options = {}) {
 
   try {
     // Step 1: Capture chart snapshot
-    console.log('[Pipeline] Step 1/3: Capturing TradingView chart snapshot...');
+    console.log('[Pipeline] Step 1/4: Capturing TradingView chart snapshot...');
     const snapshot = await captureTradingViewChart({
       sessionName,
       url: process.env.TRADINGVIEW_CHART_URL
     });
 
-    // Step 2: Gemini multimodal analysis
-    console.log('[Pipeline] Step 2/3: Executing Gemini Multimodal analysis...');
+    // Step 2: Fetch Macro & Gold News Headlines
+    console.log('[Pipeline] Step 2/4: Fetching live macroeconomic and Gold (XAU/USD) news...');
+    let newsItems = [];
+    try {
+      newsItems = await fetchGoldMacroNews();
+    } catch (newsErr) {
+      console.warn('[Pipeline] News fetch warning:', newsErr.message);
+    }
+
+    // Step 3: Gemini Multimodal + Macro News Analysis
+    console.log('[Pipeline] Step 3/4: Executing Gemini Multimodal & Macro analysis...');
     const analysisJson = await analyzeChartWithGemini(snapshot.fullPath, {
       asset: snapshot.asset,
-      sessionName
+      sessionName,
+      newsItems
     });
 
-    // Step 3: Persist into Database
-    console.log('[Pipeline] Step 3/3: Storing structured analysis in database...');
+    // Step 4: Persist into Database
+    console.log('[Pipeline] Step 4/4: Storing structured analysis in database...');
     const savedRecord = saveAnalysis({
       ...analysisJson,
       session_name: sessionName,
       image_path: snapshot.imagePath
     });
 
-    // Step 4: Dispatch to Discord Webhook
-    console.log('[Pipeline] Step 4/4: Dispatching analysis to Discord webhook...');
+    // Step 5: Dispatch to Discord Webhook
+    console.log('[Pipeline] Dispatching analysis to Discord webhook...');
     try {
       await sendAnalysisToDiscord(savedRecord, snapshot.fullPath);
     } catch (discordErr) {

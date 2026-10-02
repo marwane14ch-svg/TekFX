@@ -287,7 +287,7 @@ body {
 /* Metrics Row */
 .metrics-grid {
   display: grid;
-  grid-template-columns: repeat(5, 1fr);
+  grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
   gap: 16px;
   margin-bottom: 24px;
 }
@@ -679,6 +679,90 @@ body {
   font-size: 13.5px;
   color: var(--text-main);
   line-height: 1.6;
+}
+
+/* Macro & News Box */
+.macro-box {
+  border-left: 3px solid #eab308;
+  background: rgba(234, 179, 8, 0.04);
+}
+
+.macro-header-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.macro-detail-group {
+  margin-top: 14px;
+}
+
+.macro-sub-title {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--text-dim);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-bottom: 6px;
+}
+
+.macro-chips-container {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.macro-chip {
+  font-size: 11.5px;
+  background: rgba(234, 179, 8, 0.12);
+  color: #fde047;
+  border: 1px solid rgba(234, 179, 8, 0.25);
+  padding: 3px 8px;
+  border-radius: 4px;
+  font-weight: 500;
+}
+
+.macro-impact-card {
+  margin-top: 12px;
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  padding: 10px 12px;
+  border-radius: 6px;
+  font-size: 12.5px;
+}
+
+.impact-label {
+  color: #60a5fa;
+  font-weight: 600;
+  margin-bottom: 4px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.impact-text {
+  color: #cbd5e1;
+  line-height: 1.5;
+}
+
+.macro-risks-group {
+  margin-top: 14px;
+}
+
+.macro-risk-bullets {
+  padding-left: 18px;
+  font-size: 12.5px;
+  color: #cbd5e1;
+}
+
+.macro-risk-bullets li {
+  margin-bottom: 4px;
+}
+
+.macro-tag {
+  color: #facc15;
+  background: rgba(250, 204, 21, 0.15);
 }
 
 /* Scenario Box */

@@ -67,6 +67,35 @@ async function sendAnalysisToDiscord(analysis, snapshotFullPath) {
       }
     ];
 
+    // Append Macroeconomic & News Catalysts section
+    const newsMacro = analysis.news_macro_analysis || {};
+    if (newsMacro.macro_summary || newsMacro.gold_catalysts) {
+      let macroText = '';
+      if (newsMacro.sentiment) {
+        macroText += `• **Macro Bias:** **${newsMacro.sentiment}**\n`;
+      }
+      if (Array.isArray(newsMacro.gold_catalysts) && newsMacro.gold_catalysts.length > 0) {
+        macroText += `• **Key Catalysts:** ${newsMacro.gold_catalysts.slice(0, 4).join(' • ')}\n`;
+      }
+      if (newsMacro.dxy_yield_impact) {
+        macroText += `• **DXY & Yields:** ${newsMacro.dxy_yield_impact}\n`;
+      }
+      if (newsMacro.macro_summary) {
+        macroText += `• **Assessment:** ${newsMacro.macro_summary}\n`;
+      }
+      if (Array.isArray(newsMacro.high_impact_risk_factors) && newsMacro.high_impact_risk_factors.length > 0) {
+        macroText += `• **High-Impact Risk Events:** ${newsMacro.high_impact_risk_factors.slice(0, 3).join(', ')}`;
+      }
+
+      if (macroText.length > 1020) macroText = macroText.slice(0, 1015) + '...';
+
+      fields.splice(4, 0, {
+        name: '🌍 Macro & News Catalysts (XAU/USD)',
+        value: macroText,
+        inline: false
+      });
+    }
+
     // Append full markdown summary if available (truncated safely to Discord 1024 char limit)
     if (analysis.full_markdown_analysis) {
       let notes = analysis.full_markdown_analysis.replace(/###/g, '**').replace(/##/g, '**');
