@@ -33,9 +33,7 @@ app.get('/api/status', (req, res) => {
         ...status,
         geminiConfigured: !!(process.env.GEMINI_API_KEY && process.env.GEMINI_API_KEY !== 'your_gemini_api_key_here'),
         targetUrl: process.env.TRADINGVIEW_CHART_URL || 'https://www.tradingview.com/chart/?symbol=BINANCE:BTCUSDT',
-        model: process.env.GEMINI_MODEL || 'gemini-3.8-flash',
-        emailRecipient: process.env.ALERT_EMAIL_RECIPIENT || 'marwane19ch@gmail.com',
-        emailConfigured: !!(process.env.SMTP_USER && process.env.SMTP_PASS)
+        model: process.env.GEMINI_MODEL || 'gemini-3.8-flash'
       }
     });
   } catch (err) {

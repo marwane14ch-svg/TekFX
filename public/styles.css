@@ -232,21 +232,22 @@ body {
   text-decoration: underline;
 }
 
-.email-badge-container {
+.wa-badge-container {
   display: flex;
   align-items: center;
   gap: 7px;
-  background-color: var(--bg-card);
+  background-color: rgba(37, 211, 102, 0.1);
+  border: 1px solid rgba(37, 211, 102, 0.35);
   padding: 6px 14px;
   border-radius: 20px;
-  border: 1px solid var(--border-color);
   font-size: 11.5px;
-  color: #94a3b8;
+  color: #25d366;
   font-family: var(--font-mono);
+  font-weight: 600;
 }
 
-.email-badge-container svg {
-  color: #38bdf8;
+.wa-badge-container svg {
+  color: #25d366;
   flex-shrink: 0;
 }
 
